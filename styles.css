@@ -90,12 +90,14 @@ main {
   flex-direction: column;
   gap: 2rem;
   min-height: 100vh;
+  min-width: 0;
   padding: 1.5rem;
 }
 
 .intro,
 .view-panel,
 .view-tabs {
+  min-width: 0;
   width: 100%;
 }
 
@@ -322,6 +324,7 @@ main {
 .owner-region {
   display: grid;
   grid-template-rows: 0fr;
+  min-width: 0;
   opacity: 0;
   overflow: hidden;
   transition: grid-template-rows 300ms ease, opacity 300ms ease;
@@ -329,6 +332,7 @@ main {
 
 .owner-region > div {
   min-height: 0;
+  min-width: 0;
 }
 
 .owner-region.is-open {
@@ -343,7 +347,11 @@ main {
 
 .owner-movie-table-wrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding: 0.75rem 0 1rem 3rem;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 .owner-movie-table {
@@ -404,6 +412,11 @@ main {
   margin-bottom: 1rem;
 }
 
+.graph-controls label,
+.graph-controls select {
+  min-width: 0;
+}
+
 .graph-controls label {
   color: var(--slate-300);
   display: grid;
@@ -436,14 +449,57 @@ main {
   background: var(--black);
   border-radius: 0.5rem;
   margin-bottom: 1rem;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding: 0.5rem;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 .line-chart {
   display: block;
   min-width: 600px;
   width: 100%;
+}
+
+.chart-inspector {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.25rem 0 1.25rem;
+  min-width: 0;
+}
+
+.chart-inspector label {
+  align-items: baseline;
+  color: var(--slate-300);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.chart-inspector output {
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-inspector input {
+  accent-color: #a3e635;
+  min-height: 44px;
+  touch-action: pan-x;
+  width: 100%;
+}
+
+.chart-inspector p {
+  color: var(--slate-300);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .grid-line {
@@ -1029,7 +1085,13 @@ code {
 }
 
 .table-wrap {
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 table {
@@ -1070,6 +1132,15 @@ td.number {
 }
 
 @media (max-width: 700px) {
+  main {
+    gap: 1.25rem;
+    padding: 1rem 0.75rem;
+  }
+
+  .intro h1 {
+    font-size: clamp(1.75rem, 8vw, 2.25rem);
+  }
+
   .leader-header {
     position: relative;
     top: auto;
@@ -1090,10 +1161,34 @@ td.number {
 
   .view-tabs {
     justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .tab {
     flex: 0 0 auto;
+    min-height: 44px;
+  }
+
+  .graph-controls {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .graph-controls label {
+    min-width: 0;
+  }
+
+  .graph-controls select {
+    max-width: 100%;
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .checkbox-label {
+    grid-column: 1 / -1;
   }
 
   .stats-headlines,

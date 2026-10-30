@@ -1,4 +1,4 @@
-const PLAYERS = ["Alec", "Alex", "John", "Jordan", "Cole", "Daniel", "Brett", "Matt", "Unassigned"];
+const PLAYERS = ["Alec", "Alex", "John", "Jordan", "Cole", "Daniel", "Brett", "Matt"];
 const PLAYER_META = {
   Alec: { color: "#8b5cf6", className: "violet" },
   Alex: { color: "#38bdf8", className: "sky" },
@@ -8,8 +8,8 @@ const PLAYER_META = {
   Daniel: { color: "#60a5fa", className: "blue" },
   Brett: { color: "#f472b6", className: "pink" },
   Matt: { color: "#a3e635", className: "lime" },
-  Unassigned: { color: "#a3a3a3", className: "neutral" }
 };
+const DEFAULT_PLAYER_META = { color: "#a3a3a3", className: "neutral" };
 
 const START = "2026-11-27";
 const END = "2027-03-29";
@@ -125,13 +125,12 @@ function ownersFromMovies(movies) {
   }]));
 
   for (const movie of movies) {
-    const name = movie.owner || "Unassigned";
-    const owner = owners.get(name) || { name, total: 0, daily: 0, movies: [] };
+    const owner = owners.get(movie.owner);
+    if (!owner) continue;
     owner.total += domesticGross(movie);
     owner.daily += dailyChange(movie);
     owner.unspent_points -= points(movie);
     owner.movies.push(movie);
-    owners.set(name, owner);
   }
 
   return [...owners.values()].sort((a, b) => (b.total + b.unspent_points) - (a.total + a.unspent_points));
@@ -327,7 +326,7 @@ function renderUpdated() {
 function renderLeaderboard() {
   const list = document.querySelector("#leaderboard-list");
   list.innerHTML = state.owners.map((owner, index) => {
-    const meta = PLAYER_META[owner.name] || PLAYER_META.Unassigned;
+    const meta = PLAYER_META[owner.name] || DEFAULT_PLAYER_META;
     const isOpen = state.openOwners.has(owner.name);
     const compared = state.compared.has(owner.name);
     return `
@@ -454,7 +453,7 @@ function renderCompareDock() {
 }
 
 function scorePill(name) {
-  const meta = PLAYER_META[name] || PLAYER_META.Unassigned;
+  const meta = PLAYER_META[name] || DEFAULT_PLAYER_META;
   return `<span class="score-pill ${meta.className}"><span>${name}</span></span>`;
 }
 
@@ -490,6 +489,7 @@ function renderGraphs() {
 
 function renderLineChart(rows, keys) {
   const container = document.querySelector("#line-chart");
+  const inspector = document.querySelector("#chart-inspector");
   const legend = document.querySelector("#chart-legend");
   const width = 980;
   const height = 400;
@@ -551,25 +551,39 @@ function renderLineChart(rows, keys) {
     <span data-legend="${key}"><i style="background:${PLAYER_META[key]?.color || colorForIndex(index)}"></i>${key}</span>
   `).join("");
 
-  wireLineHover(container, rows, keys, { width, height, margin, plotWidth, x });
+  wireLineHover(container, inspector, rows, keys, { width, height, margin, plotWidth, x });
   wireLegend(container);
 }
 
-function wireLineHover(container, rows, keys, chart) {
+function wireLineHover(container, inspector, rows, keys, chart) {
   const svg = container.querySelector("svg");
   const hit = container.querySelector(".hit-area");
   const layer = container.querySelector(".tooltip-layer");
   const hoverLine = container.querySelector(".hover-line");
   const box = container.querySelector(".tooltip-box");
   const text = container.querySelector(".tooltip-text");
+  inspector.innerHTML = `
+    <label for="chart-date">Explore the graph by date <output id="chart-date-label"></output></label>
+    <input id="chart-date" type="range" min="0" max="${Math.max(rows.length - 1, 0)}" value="0" aria-label="Choose a date to inspect on the graph">
+    <p id="chart-date-values" aria-live="polite"></p>
+  `;
+  const dateSlider = inspector.querySelector("#chart-date");
+  const dateLabel = inspector.querySelector("#chart-date-label");
+  const dateValues = inspector.querySelector("#chart-date-values");
 
-  hit.addEventListener("pointermove", (event) => {
+  function inspect(index, showTooltip = true) {
+    const row = rows[Math.min(rows.length - 1, Math.max(0, index))];
+    if (!row) return;
+    dateSlider.value = String(rows.indexOf(row));
+    dateLabel.textContent = row.date;
+    dateValues.textContent = keys
+      .map((key) => `${key}: ${money(row[key] || 0)}`)
+      .join(" · ");
+
+    if (!showTooltip) return;
     const rect = svg.getBoundingClientRect();
-    const scale = chart.width / rect.width;
-    const svgX = (event.clientX - rect.left) * scale;
-    const index = Math.min(rows.length - 1, Math.max(0, Math.round(((svgX - chart.margin.left) / chart.plotWidth) * (rows.length - 1))));
-    const row = rows[index];
-    const xPos = chart.x(index);
+    const rowIndex = rows.indexOf(row);
+    const xPos = chart.x(rowIndex);
     const boxX = xPos > chart.width - 270 ? xPos - 250 : xPos + 14;
     const boxY = chart.margin.top + 12;
 
@@ -588,11 +602,32 @@ function wireLineHover(container, rows, keys, chart) {
         .join("")}
     `;
     layer.hidden = false;
+  }
+
+  hit.addEventListener("pointermove", (event) => {
+    const rect = svg.getBoundingClientRect();
+    const scale = chart.width / rect.width;
+    const svgX = (event.clientX - rect.left) * scale;
+    const index = Math.min(rows.length - 1, Math.max(0, Math.round(((svgX - chart.margin.left) / chart.plotWidth) * (rows.length - 1))));
+    inspect(index);
+  });
+
+  hit.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse") {
+      const rect = svg.getBoundingClientRect();
+      const svgX = (event.clientX - rect.left) * (chart.width / rect.width);
+      inspect(Math.round(((svgX - chart.margin.left) / chart.plotWidth) * (rows.length - 1)));
+    }
+  });
+
+  dateSlider.addEventListener("input", () => {
+    inspect(Number(dateSlider.value));
   });
 
   hit.addEventListener("pointerleave", () => {
-    layer.hidden = true;
+    if (document.activeElement !== dateSlider) layer.hidden = true;
   });
+  inspect(0, false);
 }
 
 function wireLegend(container) {
@@ -646,7 +681,8 @@ function colorForIndex(index) {
 
 function renderMovies() {
   const body = document.querySelector("#movie-table");
-  body.innerHTML = [...state.data.movies]
+  body.innerHTML = state.data.movies
+    .filter((movie) => PLAYERS.includes(movie.owner))
     .sort((a, b) => domesticGross(b) - domesticGross(a))
     .map((movie) => `
       <tr>
@@ -941,9 +977,6 @@ function wireTabs() {
         panel.classList.toggle("is-active", panel.id === `${tab.dataset.view}-view`);
       });
 
-      if (tab.dataset.view === "stats") {
-        document.querySelector("#stats-view .stats-deck")?.scrollTo({ top: 0, behavior: "smooth" });
-      }
     });
   });
 }
@@ -970,7 +1003,6 @@ async function main() {
   renderGraphControls();
   renderGraphs();
   renderMovies();
-  renderFunStats();
   wireTabs();
 }
 
